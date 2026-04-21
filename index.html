@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DuelDex — Yu-Gi-Oh! Card Browser</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    :root {
+      --gold:      #c9a84c;
+      --gold-lt:   #e8cb7a;
+      --gold-dk:   #7a5e1a;
+      --bg-void:   #0a090e;
+      --bg-panel:  #10101a;
+      --bg-card:   #151525;
+      --bg-hover:  #1c1c30;
+      --border:    rgba(201,168,76,0.25);
+      --border-hi: rgba(201,168,76,0.7);
+      --text-main: #e8dfc8;
+      --text-dim:  #8a7e68;
+      --text-gold: #c9a84c;
+      --red:       #c94040;
+      --blue:      #4070c9;
+      --purple:    #8040c9;
+      --green:     #40a840;
+      --cyan:      #40b8c9;
+      --teal:      #2aa89c;
+      --shadow:    0 4px 32px rgba(0,0,0,0.7);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-main);
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 16px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND RUNE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 70%),
+        radial-gradient(circle at 20% 80%, rgba(128,64,201,0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 2rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(201,168,76,0.08) 0%, transparent 100%);
+    }
+
+    header h1 {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      color: var(--gold);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 40px rgba(201,168,76,0.4), 0 2px 4px rgba(0,0,0,0.8);
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      font-style: italic;
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+    }
+
+    #filter-bar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      padding: 1.2rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-btn {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.45rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--gold-dk);
+      color: var(--gold);
+      background: rgba(201,168,76,0.05);
+    }
+
+    .filter-btn.active {
+      background: rgba(201,168,76,0.12);
+      border-color: var(--gold);
+      color: var(--gold-lt);
+      box-shadow: 0 0 12px rgba(201,168,76,0.2);
+    }
+
+   
+    .filter-btn[data-type="Effect Monster"].active    { border-color: var(--red);    color: #e07070; background: rgba(201,64,64,0.1); box-shadow: 0 0 12px rgba(201,64,64,0.2); }
+    .filter-btn[data-type="Spell Card"].active        { border-color: var(--teal);   color: #60d4c8; background: rgba(64,168,156,0.1); box-shadow: 0 0 12px rgba(64,168,156,0.2); }
+    .filter-btn[data-type="Trap Card"].active         { border-color: var(--purple); color: #b070e0; background: rgba(128,64,201,0.1); box-shadow: 0 0 12px rgba(128,64,201,0.2); }
+    .filter-btn[data-type="Link Monster"].active      { border-color: var(--blue);   color: #6090e0; background: rgba(64,112,201,0.1); box-shadow: 0 0 12px rgba(64,112,201,0.2); }
+    .filter-btn[data-type="Tuner Monster"].active     { border-color: var(--green);  color: #70cc70; background: rgba(64,168,64,0.1);  box-shadow: 0 0 12px rgba(64,168,64,0.2); }
+    .filter-btn[data-type="XYZ Monster"].active       { border-color: #aaa;          color: #ccc;    background: rgba(170,170,170,0.1); box-shadow: 0 0 12px rgba(170,170,170,0.15); }
+    .filter-btn[data-type="Fusion Monster"].active    { border-color: var(--purple); color: #d080e8; background: rgba(160,64,201,0.1); box-shadow: 0 0 12px rgba(160,64,201,0.2); }
+
+   
+    .filter-btn .badge {
+      display: inline-block;
+      margin-left: 0.4rem;
+      background: rgba(255,255,255,0.06);
+      border-radius: 99px;
+      padding: 0 0.4rem;
+      font-size: 0.65rem;
+      font-family: 'Crimson Text', serif;
+    }
+
+    /* ── LAYOUT ── */
+    #app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      height: calc(100vh - 160px);
+      min-height: 500px;
+      overflow: hidden;
+    }
+
+    /* ── MASTER LIST ── */
+    #master {
+      width: 310px;
+      min-width: 200px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      background: var(--bg-panel);
+    }
+
+    #master::-webkit-scrollbar { width: 4px; }
+    #master::-webkit-scrollbar-track { background: transparent; }
+    #master::-webkit-scrollbar-thumb { background: var(--gold-dk); border-radius: 2px; }
+
+    #master-loading, #master-empty {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .card-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(201,168,76,0.07);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .card-item:hover { background: var(--bg-hover); }
+    .card-item.selected {
+      background: rgba(201,168,76,0.1);
+      border-left: 3px solid var(--gold);
+    }
+    .card-item.selected .item-name { color: var(--gold-lt); }
+
+    .item-thumb {
+      width: 44px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg-card);
+    }
+
+    .item-info { overflow: hidden; }
+
+    .item-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+
+    .item-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+      font-style: italic;
+    }
+
+    .item-atk {
+      font-size: 0.7rem;
+      color: var(--gold-dk);
+      margin-top: 0.15rem;
+    }
+
+    /* ── DETAIL PANEL ── */
+    #detail {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg-void);
+      padding: 2rem;
+    }
+
+    #detail::-webkit-scrollbar { width: 4px; }
+    #detail::-webkit-scrollbar-track { background: transparent; }
+    #detail::-webkit-scrollbar-thumb { background: var(--gold-dk); border-radius: 2px; }
+
+    #detail-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+      color: var(--text-dim);
+    }
+
+    #detail-placeholder .rune {
+      font-size: 4rem;
+      opacity: 0.2;
+    }
+
+    #detail-placeholder p {
+      font-style: italic;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── CARD DETAIL ── */
+    #card-detail { display: none; max-width: 760px; margin: 0 auto; }
+
+    .detail-hero {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+
+    .detail-img-wrap {
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .detail-img {
+      width: 180px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.8), 0 0 20px rgba(201,168,76,0.1);
+      display: block;
+    }
+
+    .detail-img-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 9px;
+      border: 1px solid rgba(201,168,76,0.15);
+      pointer-events: none;
+    }
+
+    .detail-meta { flex: 1; }
+
+    .detail-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 20px rgba(201,168,76,0.3);
+    }
+
+    .type-badge {
+      display: inline-block;
+      font-family: 'Cinzel', serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      border-radius: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .type-badge.effect   { background: rgba(201,64,64,0.2);   border: 1px solid #c94040; color: #e08080; }
+    .type-badge.spell    { background: rgba(42,168,156,0.2);  border: 1px solid #2aa89c; color: #60d4c8; }
+    .type-badge.trap     { background: rgba(128,64,201,0.2);  border: 1px solid #8040c9; color: #b070e0; }
+    .type-badge.link     { background: rgba(64,112,201,0.2);  border: 1px solid #4070c9; color: #6090e0; }
+    .type-badge.tuner    { background: rgba(64,168,64,0.2);   border: 1px solid #40a840; color: #70cc70; }
+    .type-badge.xyz      { background: rgba(100,100,100,0.2); border: 1px solid #aaa;    color: #ccc; }
+    .type-badge.fusion   { background: rgba(160,64,201,0.2);  border: 1px solid #a040c9; color: #d080e8; }
+    .type-badge.default  { background: rgba(201,168,76,0.15); border: 1px solid var(--gold-dk); color: var(--gold); }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .stat-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.15rem;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .stat-value.atk { color: #e07070; }
+    .stat-value.def { color: #6090e0; }
+
+    /* ── SECTIONS ── */
+    .detail-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold-dk);
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-desc {
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: var(--text-main);
+      font-style: italic;
+    }
+
+    /* banlist */
+    .ban-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    .ban-tag {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2px;
+    }
+
+    .ban-tag.forbidden   { background: rgba(201,64,64,0.2);   border: 1px solid #c94040; color: #e08080; }
+    .ban-tag.limited     { background: rgba(201,120,40,0.2);  border: 1px solid #c97828; color: #e0a060; }
+    .ban-tag.semi        { background: rgba(201,168,76,0.2);  border: 1px solid var(--gold-dk); color: var(--gold); }
+
+    /* sets table */
+    .sets-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .sets-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(201,168,76,0.08);
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .set-name { color: var(--text-main); }
+    .set-code { font-family: 'Cinzel', serif; font-size: 0.65rem; color: var(--text-dim); }
+    .set-rarity { font-style: italic; color: var(--text-dim); font-size: 0.82rem; }
+    .set-price { color: var(--gold); font-size: 0.82rem; margin-left: auto; white-space: nowrap; }
+
+    /* prices */
+    .price-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .price-item {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .price-source {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.15rem;
+    }
+
+    .price-val { color: var(--gold); font-size: 1rem; font-weight: 600; }
+
+    /* ── LOADER ANIMATION ── */
+    .loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 3rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      #app { flex-direction: column; height: auto; }
+      #master { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 280px; }
+      #detail { padding: 1rem; }
+      .detail-hero { flex-direction: column; align-items: center; }
+      .detail-img { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>✦ DuelDex ✦</h1>
+  <p>Yu-Gi-Oh! Card Compendium</p>
+</header>
+
+<div id="filter-bar">
+  <div class="loader" id="filters-loading">
+    <div class="spinner"></div>
+    <span>Summoning card types…</span>
+  </div>
+</div>
+
+<div id="app">
+  <aside id="master">
+    <div id="master-loading" class="loader">
+      <div class="spinner"></div>
+      <span>Loading cards…</span>
+    </div>
+  </aside>
+
+  <section id="detail">
+    <div id="detail-placeholder">
+      <div class="rune">☽ ✦ ☾</div>
+      <p>Select a card to view its details</p>
+    </div>
+    <div id="card-detail"></div>
+  </section>
+</div>
+
+<script>
+  // ── STATE ──
+  var cardTypes = [];
+  var currentType = null;
+  var currentCards = [];
+  var selectedCard = null;
+
+  // ── HELPERS ──
+  function typeBadgeClass(type) {
+    if (!type) return 'default';
+    var t = type.toLowerCase();
+    if (t.includes('effect'))  return 'effect';
+    if (t.includes('spell'))   return 'spell';
+    if (t.includes('trap'))    return 'trap';
+    if (t.includes('link'))    return 'link';
+    if (t.includes('tuner'))   return 'tuner';
+    if (t.includes('xyz'))     return 'xyz';
+    if (t.includes('fusion'))  return 'fusion';
+    return 'default';
+  }
+
+  function dollarOrDash(val) {
+    if (!val || val === '0' || val === '0.00') return '—';
+    return '$' + parseFloat(val).toFixed(2);
+  }
+
+  function xhr(url, cb) {
+    var req = new XMLHttpRequest();
+    req.open('GET', url);
+    req.onreadystatechange = function() {
+      if (req.readyState === 4) {
+        if (req.status === 200) {
+          try { cb(null, JSON.parse(req.responseText)); }
+          catch(e) { cb('Parse error'); }
+        } else {
+          cb('HTTP ' + req.status);
+        }
+      }
+    };
+    req.send();
+  }
+
+  // ── 1. LOAD CARD TYPE INDEX ──
+  xhr('https://weblabs.web.app/api/ygo/index.json', function(err, data) {
+    var bar = document.getElementById('filter-bar');
+    bar.innerHTML = '';
+
+    if (err || !data) {
+      bar.innerHTML = '<p style="color:var(--red);padding:1rem;">Failed to load card types.</p>';
+      return;
+    }
+
+    cardTypes = data;
+
+    data.forEach(function(ct) {
+      var btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.setAttribute('data-type', ct.name);
+      btn.innerHTML = ct.name + '<span class="badge">' + ct.count + '</span>';
+      btn.onclick = function() { selectType(ct); };
+      bar.appendChild(btn);
+    });
+
+    // auto-select first type
+    if (data.length > 0) selectType(data[0]);
+  });
+
+  // ── 2. SELECT TYPE (filter button) ──
+  function selectType(ct) {
+    if (currentType === ct.name) return;
+    currentType = ct.name;
+    selectedCard = null;
+
+    // update active button
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-type') === ct.name);
+    });
+
+    // show loader in master
+    document.getElementById('master').innerHTML =
+      '<div class="loader"><div class="spinner"></div><span>Loading ' + ct.name + '…</span></div>';
+
+    // reset detail
+    document.getElementById('detail-placeholder').style.display = 'flex';
+    document.getElementById('card-detail').style.display = 'none';
+
+    // fetch cards
+    xhr(ct.url, function(err, cards) {
+      var master = document.getElementById('master');
+      if (err || !cards || cards.length === 0) {
+        master.innerHTML = '<div id="master-empty">No cards found.</div>';
+        return;
+      }
+      currentCards = cards;
+      renderMasterList(cards);
+    });
+  }
+
+  // ── 3. RENDER MASTER LIST ──
+  function renderMasterList(cards) {
+    var master = document.getElementById('master');
+    master.innerHTML = '';
+
+    cards.forEach(function(card, idx) {
+      var item = document.createElement('div');
+      item.className = 'card-item';
+      item.setAttribute('data-idx', idx);
+
+      var imgSrc = (card.card_images && card.card_images[0])
+        ? card.card_images[0].image_url_small
+        : '';
+
+      var subLine = card.race
+        ? (card.race + (card.attribute ? ' / ' + card.attribute : ''))
+        : (card.type || '');
+
+      var atkLine = '';
+      if (typeof card.atk !== 'undefined') {
+        atkLine = '<div class="item-atk">ATK ' + card.atk + ' &nbsp; DEF ' + card.def + '</div>';
+      }
+
+      item.innerHTML =
+        '<img class="item-thumb" src="' + imgSrc + '" alt="' + card.name + '" ' +
+              'onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="item-info">' +
+          '<div class="item-name">' + card.name + '</div>' +
+          '<div class="item-sub">' + subLine + '</div>' +
+          atkLine +
+        '</div>';
+
+      item.onclick = function() { selectCard(card, item); };
+      master.appendChild(item);
+    });
+  }
+
+  // ── 4. SELECT CARD (detail) ──
+  function selectCard(card, itemEl) {
+    // highlight selected
+    document.querySelectorAll('.card-item').forEach(function(el) {
+      el.classList.remove('selected');
+    });
+    itemEl.classList.add('selected');
+    selectedCard = card;
+
+    document.getElementById('detail-placeholder').style.display = 'none';
+    renderDetail(card);
+  }
+
+  // ── 5. RENDER DETAIL ──
+  function renderDetail(card) {
+    var panel = document.getElementById('card-detail');
+    panel.style.display = 'block';
+
+    var imgUrl = (card.card_images && card.card_images[0])
+      ? card.card_images[0].image_url
+      : '';
+
+    var badgeClass = typeBadgeClass(card.type);
+
+    // stats
+    var statsHTML = '';
+    if (typeof card.level !== 'undefined') {
+      statsHTML += statBox('Level', '⭐'.repeat(Math.min(card.level, 12)));
+    }
+    if (typeof card.atk !== 'undefined') {
+      statsHTML += '<div class="stat-box"><div class="stat-label">ATK</div><div class="stat-value atk">' + card.atk + '</div></div>';
+      statsHTML += '<div class="stat-box"><div class="stat-label">DEF</div><div class="stat-value def">' + card.def + '</div></div>';
+    }
+    if (card.race)      statsHTML += statBox('Race', card.race);
+    if (card.attribute) statsHTML += statBox('Attribute', card.attribute);
+    if (card.archetype) statsHTML += statBox('Archetype', card.archetype);
+
+    // banlist
+    var banHTML = '';
+    if (card.banlist_info) {
+      var bl = card.banlist_info;
+      var tags = '';
+      if (bl.ban_tcg) tags += banTag('TCG', bl.ban_tcg);
+      if (bl.ban_ocg) tags += banTag('OCG', bl.ban_ocg);
+      if (tags) {
+        banHTML = '<div class="detail-section">' +
+          '<div class="section-title">Ban Status</div>' +
+          '<div class="ban-tags">' + tags + '</div>' +
+          '</div>';
+      }
+    }
+
+    // card sets
+    var setsHTML = '';
+    if (card.card_sets && card.card_sets.length > 0) {
+      var items = card.card_sets.map(function(s) {
+        var price = (s.set_price && s.set_price !== '0' && s.set_price !== '0.00')
+          ? '<span class="set-price">$' + parseFloat(s.set_price).toFixed(2) + '</span>'
+          : '';
+        return '<li>' +
+          '<span class="set-name">' + s.set_name + '</span>' +
+          '<span class="set-code">' + s.set_code + '</span>' +
+          '<span class="set-rarity">' + s.set_rarity + '</span>' +
+          price +
+          '</li>';
+      }).join('');
+
+      setsHTML = '<div class="detail-section">' +
+        '<div class="section-title">Card Sets (' + card.card_sets.length + ')</div>' +
+        '<ul class="sets-list">' + items + '</ul>' +
+        '</div>';
+    }
+
+    // prices
+    var pricesHTML = '';
+    if (card.card_prices && card.card_prices[0]) {
+      var p = card.card_prices[0];
+      pricesHTML = '<div class="detail-section">' +
+        '<div class="section-title">Market Prices</div>' +
+        '<div class="price-grid">' +
+          priceItem('Cardmarket', p.cardmarket_price) +
+          priceItem('TCGPlayer', p.tcgplayer_price) +
+          priceItem('eBay', p.ebay_price) +
+          priceItem('Amazon', p.amazon_price) +
+          priceItem('CoolStuff', p.coolstuffinc_price) +
+        '</div>' +
+        '</div>';
+    }
+
+    panel.innerHTML =
+      '<div class="detail-hero">' +
+        (imgUrl ? '<div class="detail-img-wrap"><img class="detail-img" src="' + imgUrl + '" alt="' + card.name + '"></div>' : '') +
+        '<div class="detail-meta">' +
+          '<div class="detail-title">' + card.name + '</div>' +
+          '<span class="type-badge ' + badgeClass + '">' + (card.type || 'Unknown') + '</span>' +
+          (statsHTML ? '<div class="stat-grid">' + statsHTML + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="detail-section">' +
+        '<div class="section-title">Card Text</div>' +
+        '<p class="card-desc">' + (card.desc || 'No description available.') + '</p>' +
+      '</div>' +
+      banHTML +
+      setsHTML +
+      pricesHTML;
+
+    // scroll detail to top
+    document.getElementById('detail').scrollTop = 0;
+  }
+
+  function statBox(label, val) {
+    return '<div class="stat-box"><div class="stat-label">' + label + '</div>' +
+           '<div class="stat-value">' + val + '</div></div>';
+  }
+
+  function banTag(region, status) {
+    var cls = 'default';
+    if (status === 'Forbidden') cls = 'forbidden';
+    else if (status === 'Limited') cls = 'limited';
+    else if (status === 'Semi-Limited') cls = 'semi';
+    return '<span class="ban-tag ' + cls + '">' + region + ': ' + status + '</span>';
+  }
+
+  function priceItem(source, val) {
+    return '<div class="price-item">' +
+      '<div class="price-source">' + source + '</div>' +
+      '<div class="price-val">' + dollarOrDash(val) + '</div>' +
+      '</div>';
+  }
+</script>
+</body>
+</html>
